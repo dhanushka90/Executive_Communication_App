@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="The Brief — a daily communication coach for modern executives." />
+    <title>The Brief — Executive communication, sharpened daily</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="The Brief home">
+        <span class="brand-mark"><i data-lucide="message-square-text"></i></span>
+        <span>The Brief</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a class="active" href="#today">Today</a>
+        <a href="#library">Library</a>
+        <a href="#practice">Practice</a>
+      </nav>
+      <div class="header-actions">
+        <button class="icon-button" aria-label="Notifications"><i data-lucide="bell"></i><span class="dot"></span></button>
+        <button class="avatar" aria-label="Open profile">AM</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" id="today">
+        <div class="hero-copy">
+          <span class="eyebrow"><span></span> Saturday, August 1</span>
+          <h1>Good morning, Alex.</h1>
+          <p>Your five-minute communication edge, curated for the conversations that matter.</p>
+          <div class="progress-wrap">
+            <div class="progress-label"><span>Today's progress</span><strong id="progressText">2 of 5 explored</strong></div>
+            <div class="progress"><span id="progressBar"></span></div>
+          </div>
+        </div>
+        <aside class="streak-card">
+          <div class="streak-icon"><i data-lucide="flame"></i></div>
+          <div><strong>12 day streak</strong><span>Keep the momentum going</span></div>
+          <i class="chevron" data-lucide="chevron-right"></i>
+        </aside>
+      </section>
+
+      <section class="search-panel" id="library">
+        <div class="search-heading">
+          <div class="search-icon"><i data-lucide="search"></i></div>
+          <div><h2>Meeting Mode</h2><p>Find the right phrase, right when you need it.</p></div>
+        </div>
+        <div class="search-box">
+          <i data-lucide="search"></i>
+          <input id="searchInput" type="search" autocomplete="off" placeholder="Try “disagree politely” or “wrap up a meeting”" aria-label="Search the phrase library" />
+          <kbd>⌘ K</kbd>
+        </div>
+        <div class="quick-tags">
+          <span>Quick search</span>
+          <button data-search="open a meeting">Open a meeting</button>
+          <button data-search="buy time">Buy time</button>
+          <button data-search="disagree">Disagree</button>
+          <button data-search="wrap up">Wrap up</button>
+        </div>
+        <div id="searchResults" class="search-results" aria-live="polite"></div>
+      </section>
+
+      <section class="daily-section">
+        <div class="section-heading">
+          <div><span class="eyebrow"><span></span> Curated for today</span><h2>Words worth using</h2></div>
+          <p>Fresh language for sharper meetings and more natural conversations.</p>
+        </div>
+
+        <div class="cards" id="phraseCards">
+          <article class="phrase-card featured" data-keywords="alignment meeting business rally direction">
+            <div class="card-top"><span class="pill canada">🇨🇦 &nbsp;CANADIAN</span><span class="category">Meeting room</span><button class="save-button" aria-label="Save phrase"><i data-lucide="bookmark"></i></button></div>
+            <div class="card-content"><span class="type">IDIOM OF THE DAY</span><h3>Get our ducks in a row</h3><p>To get organized and make sure everyone is aligned before moving forward.</p><blockquote>“Let’s get our ducks in a row before we take this to the board.”</blockquote></div>
+            <div class="card-footer"><button class="listen"><i data-lucide="volume-2"></i> Listen</button><button class="try-button">I've got this <i data-lucide="check"></i></button></div>
+          </article>
+
+          <article class="phrase-card" data-keywords="circle back follow up later meeting business">
+            <div class="card-top"><span class="pill usa">🇺🇸 &nbsp;AMERICAN</span><span class="category">Follow-up</span><button class="save-button" aria-label="Save phrase"><i data-lucide="bookmark"></i></button></div>
+            <div class="card-content"><span class="type">BUSINESS PHRASE</span><h3>Circle back</h3><p>To return to a topic or reconnect about something at a later time.</p><blockquote>“I’ll circle back with the revised numbers by end of day.”</blockquote></div>
+            <div class="card-footer"><button class="listen"><i data-lucide="volume-2"></i> Listen</button><button class="try-button">I've got this <i data-lucide="check"></i></button></div>
+          </article>
+
+          <article class="phrase-card" data-keywords="good call casual agree decision small talk">
+            <div class="card-top"><span class="pill casual"><i data-lucide="coffee"></i> CASUAL</span><span class="category">Small talk</span><button class="save-button" aria-label="Save phrase"><i data-lucide="bookmark"></i></button></div>
+            <div class="card-content"><span class="type">NATURAL EXPRESSION</span><h3>Good call</h3><p>A natural way to say someone made a smart decision or suggestion.</p><blockquote>“Good call moving the discussion to next week—we’ll have more context.”</blockquote></div>
+            <div class="card-footer"><button class="listen"><i data-lucide="volume-2"></i> Listen</button><button class="try-button">I've got this <i data-lucide="check"></i></button></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="practice-card" id="practice">
+        <div class="practice-icon"><i data-lucide="sparkles"></i></div>
+        <div><span class="eyebrow"><span></span> Two-minute practice</span><h2>Make it sound like you</h2><p>Turn today's phrases into language that fits your voice and your next meeting.</p></div>
+        <button id="practiceButton">Start practice <i data-lucide="arrow-right"></i></button>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status"><i data-lucide="check-circle"></i><span>Saved to your library</span></div>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
