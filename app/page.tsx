@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 type Region = "Canada" | "United States" | "Global";
 type PhraseType = "Idiom" | "Slang" | "Power word" | "Transition";
-type Phrase = { id: string; phrase: string; meaning: string; example: string; region: Region; type: PhraseType; context: string[]; tone: "Casual" | "Neutral" | "Polished" };
+type Phrase = { id: string; dbId?: string; phrase: string; meaning: string; example: string; region: Region; type: PhraseType; context: string[]; tone: "Casual" | "Neutral" | "Polished" };
 
 const phrases: Phrase[] = [
   { id: "move-needle", phrase: "Move the needle", meaning: "Create a noticeable or meaningful impact.", example: "Let’s focus on the two initiatives most likely to move the needle this quarter.", region: "United States", type: "Idiom", context: ["Strategy", "Results"], tone: "Polished" },
@@ -35,8 +35,33 @@ const phrases: Phrase[] = [
 ];
 const dailyIds = ["move-needle", "double-click", "give-er", "thoughtful", "build-on"];
 
+function mapRemotePhrase(item: { id: string; slug: string; phrase: string; meaning: string; example: string; region: Region; type: PhraseType; context: string[]; tone: Phrase["tone"] }): Phrase {
+  return { id: item.slug, dbId: item.id, phrase: item.phrase, meaning: item.meaning, example: item.example, region: item.region, type: item.type, context: item.context ?? [], tone: item.tone };
+}
+
 function Flag({ region }: { region: Region }) { return <span className={`flag flag-${region === "Canada" ? "ca" : region === "United States" ? "us" : "global"}`} aria-label={region}>{region === "Canada" ? "CA" : region === "United States" ? "US" : "GL"}</span>; }
 function BrandMark() { return <span className="brand-mark"><span>B</span></span>; }
+
+async function copyToClipboard(value: string) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+    const helper = document.createElement("textarea");
+    helper.value = value;
+    helper.setAttribute("readonly", "");
+    helper.style.position = "fixed";
+    helper.style.opacity = "0";
+    document.body.appendChild(helper);
+    helper.select();
+    const copied = document.execCommand("copy");
+    helper.remove();
+    return copied;
+  } catch {
+    return false;
+  }
+}
 
 function PhraseCard({ phrase, saved, onSave, onPractice }: { phrase: Phrase; saved: boolean; onSave: () => void; onPractice: () => void }) {
   return <article className="phrase-card">
@@ -46,9 +71,9 @@ function PhraseCard({ phrase, saved, onSave, onPractice }: { phrase: Phrase; sav
   </article>;
 }
 
-function DailyView({ savedIds, toggleSaved, completed, completePhrase }: { savedIds: string[]; toggleSaved: (id: string) => void; completed: string[]; completePhrase: (id: string) => void }) {
+function DailyView({ catalog, savedIds, toggleSaved, completed, completePhrase }: { catalog: Phrase[]; savedIds: string[]; toggleSaved: (id: string) => void; completed: string[]; completePhrase: (id: string) => void }) {
   const [active, setActive] = useState(0); const [showCoach, setShowCoach] = useState(false);
-  const daily = dailyIds.map(id => phrases.find(item => item.id === id)!).filter(Boolean); const item = daily[active];
+  const daily = dailyIds.map(id => catalog.find(item => item.id === id)!).filter(Boolean); const item = daily[active] ?? catalog[0];
   const progress = Math.round((completed.filter(id => dailyIds.includes(id)).length / daily.length) * 100);
   const currentDate = new Intl.DateTimeFormat("en-CA", { weekday: "long", month: "long", day: "numeric" }).format(new Date());
   const next = () => { setActive(value => (value + 1) % daily.length); setShowCoach(false); }; const previous = () => { setActive(value => (value - 1 + daily.length) % daily.length); setShowCoach(false); };
@@ -62,33 +87,62 @@ function DailyView({ savedIds, toggleSaved, completed, completePhrase }: { saved
   </main>;
 }
 
-function SearchView({ savedIds, toggleSaved, initialQuery = "" }: { savedIds: string[]; toggleSaved: (id: string) => void; initialQuery?: string }) {
+function SearchView({ catalog, savedIds, toggleSaved, initialQuery = "" }: { catalog: Phrase[]; savedIds: string[]; toggleSaved: (id: string) => void; initialQuery?: string }) {
   const [query, setQuery] = useState(initialQuery); const [region, setRegion] = useState<"All" | Region>("All"); const [type, setType] = useState<"All" | PhraseType>("All"); const [copied, setCopied] = useState<string | null>(null); const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { inputRef.current?.focus(); }, []);
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     const intent = q.includes("clarif") ? "clarifying" : q.includes("decis") ? "decisions" : q.includes("small talk") ? "small talk" : q.includes("wrap") || q.includes("conclud") ? "summarizing" : q.includes("disagree") ? "collaboration" : "";
     const tokens = q.split(/\s+/).filter(word => word.length > 3);
-    return phrases.filter(item => {
+    return catalog.filter(item => {
       const text = `${item.phrase} ${item.meaning} ${item.example} ${item.context.join(" ")}`.toLowerCase();
       const matchesQuery = !q || text.includes(q) || (intent ? text.includes(intent) : tokens.some(word => text.includes(word)));
       return matchesQuery && (region === "All" || item.region === region) && (type === "All" || item.type === type);
     });
-  }, [query, region, type]);
-  const copyPhrase = async (item: Phrase) => { await navigator.clipboard?.writeText(item.example); setCopied(item.id); window.setTimeout(() => setCopied(null), 1600); };
+  }, [catalog, query, region, type]);
+  const copyPhrase = async (item: Phrase) => { if (await copyToClipboard(item.example)) { setCopied(item.id); window.setTimeout(() => setCopied(null), 1600); } };
   return <main className="search-page"><section className="search-hero"><div className="eyebrow"><span className="eyebrow-line" /> MEETING MODE</div><h1>Find the right words.<br /><em>Right when you need them.</em></h1><p>Search by phrase, meaning, or meeting moment. Every suggestion includes a ready-to-use example.</p><div className="search-box"><Search size={22} /><input ref={inputRef} value={query} onChange={event => setQuery(event.target.value)} placeholder="Try “disagree politely” or “wrap up a meeting”" /><span><Command size={13} /> K</span></div><div className="quick-prompts"><span>QUICK START</span>{["Clarify a point", "Sound decisive", "Make small talk", "Wrap up"].map(prompt => <button key={prompt} onClick={() => setQuery(prompt)}>{prompt}</button>)}</div></section>
     <section className="results-section"><div className="filter-bar"><div className="filter-group"><span>Region</span>{(["All", "Canada", "United States", "Global"] as const).map(item => <button className={region === item ? "active" : ""} key={item} onClick={() => setRegion(item)}>{item === "United States" ? "US" : item}</button>)}</div><div className="filter-group"><span>Type</span>{(["All", "Idiom", "Slang", "Power word", "Transition"] as const).map(item => <button className={type === item ? "active" : ""} key={item} onClick={() => setType(item)}>{item}</button>)}</div></div><div className="results-header"><div><span className="result-count">{results.length}</span><h2>{query ? "useful matches" : "meeting-ready phrases"}</h2></div><p>Click any example to copy it</p></div>
-      {results.length > 0 ? <div className="result-grid">{results.map(item => <article className="result-card" key={item.id}><div className="phrase-card-top"><div className="pill-row"><Flag region={item.region} /><span className="type-pill">{item.type}</span></div><button className="icon-button" onClick={() => toggleSaved(item.id)}>{savedIds.includes(item.id) ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}</button></div><h3>{item.phrase}</h3><p className="meaning">{item.meaning}</p><button className="copy-example" onClick={() => copyPhrase(item)}><span>“{item.example}”</span><span className={copied === item.id ? "copied" : "copy-label"}>{copied === item.id ? <><Check size={14} /> Copied</> : "Copy"}</span></button><div className="context-list">{item.context.map(tag => <span key={tag}>{tag}</span>)}</div></article>)}</div> : <div className="empty-state"><Search size={26} /><h3>No exact match yet</h3><p>Try a broader meeting moment, such as “strategy,” “praise,” or “clarify.”</p><button onClick={() => { setQuery(""); setRegion("All"); setType("All"); }}>Clear filters</button></div>}
+      {results.length > 0 ? <div className="result-grid">{results.map(item => <article className="result-card" key={item.id}><div className="phrase-card-top"><div className="pill-row"><Flag region={item.region} /><span className="type-pill">{item.type}</span></div><button className="icon-button" onClick={() => toggleSaved(item.id)} aria-label={savedIds.includes(item.id) ? `Remove ${item.phrase} from saved` : `Save ${item.phrase}`}>{savedIds.includes(item.id) ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}</button></div><h3>{item.phrase}</h3><p className="meaning">{item.meaning}</p><button className="copy-example" onClick={() => copyPhrase(item)}><span>“{item.example}”</span><span className={copied === item.id ? "copied" : "copy-label"}>{copied === item.id ? <><Check size={14} /> Copied</> : "Copy"}</span></button><div className="context-list">{item.context.map(tag => <span key={tag}>{tag}</span>)}</div></article>)}</div> : <div className="empty-state"><Search size={26} /><h3>No exact match yet</h3><p>Try a broader meeting moment, such as “strategy,” “praise,” or “clarify.”</p><button onClick={() => { setQuery(""); setRegion("All"); setType("All"); }}>Clear filters</button></div>}
     </section></main>;
 }
 
 export default function Home() {
-  const [view, setView] = useState<"daily" | "search" | "saved">("daily"); const [savedIds, setSavedIds] = useState<string[]>([]); const [completed, setCompleted] = useState<string[]>([]); const [mobileOpen, setMobileOpen] = useState(false);
-  useEffect(() => { try { setSavedIds(JSON.parse(localStorage.getItem("briefly-saved") || "[]")); setCompleted(JSON.parse(localStorage.getItem("briefly-completed") || "[]")); } catch {} }, []);
+  const [view, setView] = useState<"daily" | "search" | "saved">("daily"); const [catalog, setCatalog] = useState<Phrase[]>(phrases); const [savedIds, setSavedIds] = useState<string[]>([]); const [completed, setCompleted] = useState<string[]>([]); const [mobileOpen, setMobileOpen] = useState(false); const [signedIn, setSignedIn] = useState(false); const [userEmail, setUserEmail] = useState<string | null>(null);
+  useEffect(() => {
+    try { setSavedIds(JSON.parse(localStorage.getItem("briefly-saved") || "[]")); setCompleted(JSON.parse(localStorage.getItem("briefly-completed") || "[]")); } catch {}
+    void (async () => {
+      try {
+        const contentResponse = await fetch("/api/content");
+        const content = await contentResponse.json() as { configured?: boolean; items?: Parameters<typeof mapRemotePhrase>[0][] };
+        if (content.configured && content.items?.length) setCatalog(content.items.map(mapRemotePhrase));
+        const meResponse = await fetch("/api/auth/me");
+        const me = await meResponse.json() as { configured?: boolean; user?: { email?: string } | null };
+        if (me.configured && me.user) {
+          setSignedIn(true); setUserEmail(me.user.email ?? null);
+          const savedResponse = await fetch("/api/me/saved");
+          if (savedResponse.ok) {
+            const saved = await savedResponse.json() as { items?: { content_id: string; content_items?: { slug?: string } | { slug?: string }[] }[] };
+            const remoteIds = (saved.items ?? []).map(item => { const linked = Array.isArray(item.content_items) ? item.content_items[0] : item.content_items; return linked?.slug ?? item.content_id; });
+            setSavedIds(remoteIds);
+          }
+        }
+      } catch { /* local fallback remains available when Supabase is not configured */ }
+    })();
+  }, []);
   useEffect(() => { const onKeyDown = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setView("search"); } }; window.addEventListener("keydown", onKeyDown); return () => window.removeEventListener("keydown", onKeyDown); }, []);
-  const toggleSaved = (id: string) => setSavedIds(current => { const next = current.includes(id) ? current.filter(item => item !== id) : [...current, id]; localStorage.setItem("briefly-saved", JSON.stringify(next)); return next; });
-  const completePhrase = (id: string) => setCompleted(current => { const next = current.includes(id) ? current : [...current, id]; localStorage.setItem("briefly-completed", JSON.stringify(next)); return next; });
-  return <div className="app-shell"><header className="site-header"><button className="brand" onClick={() => setView("daily")}><BrandMark /><span><strong>Briefly</strong><small>EXECUTIVE COMMUNICATION</small></span></button><nav className={mobileOpen ? "open" : ""}><button className={view === "daily" ? "active" : ""} onClick={() => { setView("daily"); setMobileOpen(false); }}>Daily briefing</button><button className={view === "search" ? "active" : ""} onClick={() => { setView("search"); setMobileOpen(false); }}>Phrase finder</button><button className={view === "saved" ? "active" : ""} onClick={() => { setView("saved"); setMobileOpen(false); }}>Saved <span>{savedIds.length}</span></button></nav><div className="header-actions"><button className="header-search" onClick={() => setView("search")}><Search size={16} /> <span>Quick find</span> <kbd><Command size={11} />K</kbd></button><button className="avatar" aria-label="Profile">DR</button><button className="mobile-menu" onClick={() => setMobileOpen(value => !value)} aria-label="Toggle menu">{mobileOpen ? <X /> : <Menu />}</button></div></header>
-    {view === "daily" && <DailyView savedIds={savedIds} toggleSaved={toggleSaved} completed={completed} completePhrase={completePhrase} />}{view === "search" && <SearchView savedIds={savedIds} toggleSaved={toggleSaved} />}{view === "saved" && <main className="saved-page"><div className="eyebrow"><span className="eyebrow-line" /> YOUR LIBRARY</div><h1>Words worth <em>keeping.</em></h1><p>Your personal shortlist for upcoming conversations.</p>{savedIds.length ? <div className="saved-grid">{phrases.filter(item => savedIds.includes(item.id)).map(item => <PhraseCard key={item.id} phrase={item} saved onSave={() => toggleSaved(item.id)} onPractice={() => completePhrase(item.id)} />)}</div> : <div className="empty-state saved-empty"><Bookmark size={26} /><h3>Your library is ready</h3><p>Save a phrase from today’s briefing or the phrase finder.</p><button onClick={() => setView("search")}>Explore phrases</button></div>}</main>}
+  const toggleSaved = (id: string) => {
+    const phrase = catalog.find(item => item.id === id);
+    const isSaved = savedIds.includes(id);
+    setSavedIds(current => { const next = isSaved ? current.filter(item => item !== id) : [...current, id]; localStorage.setItem("briefly-saved", JSON.stringify(next)); return next; });
+    if (signedIn && phrase?.dbId) void fetch("/api/me/saved", { method: isSaved ? "DELETE" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contentId: phrase.dbId }) });
+  };
+  const completePhrase = (id: string) => {
+    const phrase = catalog.find(item => item.id === id);
+    setCompleted(current => { const next = current.includes(id) ? current : [...current, id]; localStorage.setItem("briefly-completed", JSON.stringify(next)); return next; });
+    if (signedIn && phrase?.dbId) void fetch("/api/me/practice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contentId: phrase.dbId }) });
+  };
+  return <div className="app-shell"><header className="site-header"><button className="brand" onClick={() => setView("daily")}><BrandMark /><span><strong>Briefly</strong><small>EXECUTIVE COMMUNICATION</small></span></button><nav className={mobileOpen ? "open" : ""}><button className={view === "daily" ? "active" : ""} onClick={() => { setView("daily"); setMobileOpen(false); }}>Daily briefing</button><button className={view === "search" ? "active" : ""} onClick={() => { setView("search"); setMobileOpen(false); }}>Phrase finder</button><button className={view === "saved" ? "active" : ""} onClick={() => { setView("saved"); setMobileOpen(false); }}>Saved <span>{savedIds.length}</span></button></nav><div className="header-actions"><button className="header-search" onClick={() => setView("search")}><Search size={16} /> <span>Quick find</span> <kbd><Command size={11} />K</kbd></button><button className="avatar" aria-label={signedIn ? `Signed in as ${userEmail ?? "user"}` : "Sign in"} onClick={() => { window.location.href = "/login"; }}>{signedIn ? (userEmail?.slice(0, 2).toUpperCase() ?? "ME") : "DR"}</button><button className="mobile-menu" onClick={() => setMobileOpen(value => !value)} aria-label="Toggle menu">{mobileOpen ? <X /> : <Menu />}</button></div></header>
+    {view === "daily" && <DailyView catalog={catalog} savedIds={savedIds} toggleSaved={toggleSaved} completed={completed} completePhrase={completePhrase} />}{view === "search" && <SearchView catalog={catalog} savedIds={savedIds} toggleSaved={toggleSaved} />}{view === "saved" && <main className="saved-page"><div className="eyebrow"><span className="eyebrow-line" /> YOUR LIBRARY</div><h1>Words worth <em>keeping.</em></h1><p>Your personal shortlist for upcoming conversations.</p>{savedIds.length ? <div className="saved-grid">{catalog.filter(item => savedIds.includes(item.id)).map(item => <PhraseCard key={item.id} phrase={item} saved onSave={() => toggleSaved(item.id)} onPractice={() => completePhrase(item.id)} />)}</div> : <div className="empty-state saved-empty"><Bookmark size={26} /><h3>Your library is ready</h3><p>Save a phrase from today’s briefing or the phrase finder.</p><button onClick={() => setView("search")}>Explore phrases</button></div>}</main>}
     <footer><BrandMark /><span>Briefly</span><p>Practice a little. Lead with clarity.</p><div><Headphones size={15} /> Built for real conversations <Clock3 size={15} /> 5 minutes a day</div></footer></div>;
 }

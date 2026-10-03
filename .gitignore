@@ -5,3 +5,5 @@ node_modules/
 .wrangler/
 *.log
 site-build.tar.gz
+.env*
+!.env.example
