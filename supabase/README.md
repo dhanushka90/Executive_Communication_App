@@ -2,8 +2,9 @@
 
 1. Create a Supabase project.
 2. In the SQL Editor, run `schema.sql`, then `seed.sql`.
-3. Copy `.env.example` to `.env.local` and add the project URL and publishable key.
-4. Create your first account through Supabase Auth, then promote it to admin:
+3. To import the supplied master vocabulary list, run `master-list-import.sql` after the schema. It creates 714 unpublished draft records in their original order. Review and enrich the `meaning`, `example`, `type`, `tone`, and `context` fields before publishing them.
+4. Copy `.env.example` to `.env.local` and add the project URL and publishable key.
+5. Create your first account through Supabase Auth, then promote it to admin:
 
 ```sql
 update public.profiles
